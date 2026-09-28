@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Campus Route Finder — Dijkstra</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1c2430;
+    --ink-soft:#4a5568;
+    --paper:#f4efe4;
+    --paper-raised:#fbf8f1;
+    --blueprint:#16202c;
+    --blueprint-line:#243447;
+    --grid-line:#2a3c52;
+    --teal:#2f8f7f;
+    --teal-dark:#1f6558;
+    --amber:#e0a458;
+    --amber-dark:#b9803a;
+    --border:#d8cfb8;
+    --danger:#c1554a;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+  }
+  .app{
+    display:grid;
+    grid-template-columns:340px 1fr;
+    min-height:100vh;
+  }
+  @media (max-width:880px){
+    .app{grid-template-columns:1fr;}
+  }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{
+    background:var(--paper-raised);
+    border-right:1px solid var(--border);
+    padding:28px 26px 40px;
+    display:flex;
+    flex-direction:column;
+    gap:26px;
+  }
+  .brand h1{
+    font-family:'Source Serif 4',serif;
+    font-weight:700;
+    font-size:1.5rem;
+    line-height:1.15;
+    margin:0 0 6px;
+    letter-spacing:-0.01em;
+  }
+  .brand p{
+    margin:0;
+    color:var(--ink-soft);
+    font-size:0.88rem;
+    line-height:1.5;
+  }
+
+  .panel{
+    border-top:1px solid var(--border);
+    padding-top:18px;
+  }
+  .panel h2{
+    font-family:'Source Serif 4',serif;
+    font-size:1rem;
+    font-weight:600;
+    margin:0 0 12px;
+  }
+
+  .field-row{
+    display:flex;
+    gap:8px;
+    margin-bottom:10px;
+  }
+  select, input[type="text"], input[type="number"]{
+    font-family:'Inter',sans-serif;
+    font-size:0.88rem;
+    padding:8px 10px;
+    border:1px solid var(--border);
+    border-radius:5px;
+    background:#fff;
+    color:var(--ink);
+    width:100%;
+  }
+  select:focus, input:focus{
+    outline:2px solid var(--teal);
+    outline-offset:1px;
+  }
+  label.small{
+    display:block;
+    font-size:0.76rem;
+    color:var(--ink-soft);
+    margin-bottom:4px;
+  }
+
+  button{
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:0.85rem;
+    border:none;
+    border-radius:5px;
+    padding:10px 14px;
+    cursor:pointer;
+    transition:transform .08s ease, background .15s ease;
+  }
+  button:active{transform:translateY(1px);}
+  .btn-primary{
+    background:var(--teal);
+    color:#fff;
+    width:100%;
+  }
+  .btn-primary:hover{background:var(--teal-dark);}
+  .btn-secondary{
+    background:transparent;
+    color:var(--ink);
+    border:1px solid var(--border);
+    width:100%;
+  }
+  .btn-secondary:hover{background:#efe8d8;}
+  .btn-ghost-danger{
+    background:transparent;
+    color:var(--danger);
+    border:1px solid #e4c6c1;
+    font-size:0.78rem;
+    padding:6px 10px;
+  }
+  .btn-ghost-danger:hover{background:#fbeceb;}
+
+  .mode-toggle{
+    display:flex;
+    border:1px solid var(--border);
+    border-radius:6px;
+    overflow:hidden;
+    margin-bottom:14px;
+  }
+  .mode-toggle button{
+    flex:1;
+    border-radius:0;
+    background:#fff;
+    color:var(--ink-soft);
+    font-size:0.8rem;
+    padding:9px 6px;
+  }
+  .mode-toggle button.active{
+    background:var(--ink);
+    color:#fff;
+  }
+  .hint{
+    font-size:0.78rem;
+    color:var(--ink-soft);
+    line-height:1.5;
+    margin:0 0 12px;
+  }
+
+  .edge-list{
+    list-style:none;
+    margin:10px 0 0;
+    padding:0;
+    max-height:150px;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .edge-list li{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    font-size:0.8rem;
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:5px;
+    padding:6px 9px;
+  }
+  .edge-list li span.wt{
+    color:var(--teal-dark);
+    font-weight:600;
+    margin-left:6px;
+  }
+
+  .route-result{
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:14px 16px;
+    font-size:0.85rem;
+  }
+  .route-result .dist{
+    font-family:'Source Serif 4',serif;
+    font-weight:700;
+    font-size:1.6rem;
+    color:var(--teal-dark);
+    margin:2px 0 8px;
+  }
+  .route-path{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:4px;
+    font-size:0.82rem;
+    color:var(--ink);
+  }
+  .route-path .stop{
+    background:var(--paper);
+    border:1px solid var(--border);
+    border-radius:4px;
+    padding:2px 7px;
+  }
+  .route-path .arrow{color:var(--ink-soft);}
+  .route-empty{color:var(--ink-soft); font-size:0.85rem;}
+
+  /* ---------- Canvas area ---------- */
+  .stage{
+    position:relative;
+    background:var(--blueprint);
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size:34px 34px;
+    overflow:hidden;
+  }
+  .stage-header{
+    position:absolute;
+    top:0; left:0; right:0;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:16px 22px;
+    z-index:5;
+    pointer-events:none;
+  }
+  .stage-title{
+    font-family:'Source Serif 4',serif;
+    color:#e8e2d2;
+    font-size:0.95rem;
+    letter-spacing:0.02em;
+    opacity:0.85;
+  }
+  .stage-status{
+    font-size:0.78rem;
+    color:#9fb0c3;
+    background:rgba(22,32,44,0.7);
+    border:1px solid var(--blueprint-line);
+    padding:5px 10px;
+    border-radius:5px;
+    pointer-events:auto;
+  }
+  #graphCanvas{
+    display:block;
+    width:100%;
+    height:100%;
+    cursor:crosshair;
+  }
+  .legend{
+    position:absolute;
+    bottom:18px;
+    left:22px;
+    display:flex;
+    gap:16px;
+    font-size:0.76rem;
+    color:#9fb0c3;
+    z-index:5;
+  }
+  .legend .dot{
+    display:inline-block;
+    width:9px;height:9px;
+    border-radius:50%;
+    margin-right:5px;
+    vertical-align:middle;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <h1>Campus Route Finder</h1>
+      <p>Build a weighted map of campus locations, then run Dijkstra's algorithm to find the shortest walking path between any two points.</p>
+    </div>
+
+    <div class="panel">
+      <h2>Build the map</h2>
+      <div class="mode-toggle">
+        <button id="modeNode" class="active">Place location</button>
+        <button id="modeEdge">Connect paths</button>
+      </div>
+      <p class="hint" id="modeHint">Click anywhere on the map to drop a new location pin, then name it below.</p>
+
+      <div class="field-row">
+        <div style="flex:1">
+          <label class="small">Pending location name</label>
+          <input type="text" id="nodeNameInput" placeholder="e.g. Library">
+        </div>
+      </div>
+
+      <div class="field-row" id="edgeWeightRow" style="display:none;">
+        <div style="flex:1">
+          <label class="small">Distance between selected locations (meters)</label>
+          <input type="number" id="edgeWeightInput" min="1" value="100">
+        </div>
+      </div>
+      <button class="btn-secondary" id="clearMapBtn">Reset map</button>
+    </div>
+
+    <div class="panel">
+      <h2>Paths on the map</h2>
+      <ul class="edge-list" id="edgeList"></ul>
+    </div>
+
+    <div class="panel">
+      <h2>Find shortest route</h2>
+      <div class="field-row">
+        <div style="flex:1">
+          <label class="small">Start</label>
+          <select id="startSelect"></select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div style="flex:1">
+          <label class="small">Destination</label>
+          <select id="endSelect"></select>
+        </div>
+      </div>
+      <button class="btn-primary" id="findRouteBtn">Find shortest route</button>
+
+      <div style="height:12px;"></div>
+      <div class="route-result" id="routeResult">
+        <div class="route-empty">Pick a start and destination, then find a route.</div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="stage">
+    <div class="stage-header">
+      <div class="stage-title">Campus map</div>
+      <div class="stage-status" id="stageStatus">0 locations · 0 paths</div>
+    </div>
+    <canvas id="graphCanvas"></canvas>
+    <div class="legend">
+      <span><span class="dot" style="background:#e8e2d2;"></span>Location</span>
+      <span><span class="dot" style="background:#e0a458;"></span>On shortest route</span>
+      <span><span class="dot" style="background:#2f8f7f;"></span>Start / destination</span>
+    </div>
+  </main>
+
+</div>
+
+<script>
+(function(){
+  // ---------- State ----------
+  let nodes = [];   // {id, name, x, y}
+  let edges = [];   // {a, b, weight}
+  let nextId = 1;
+  let mode = 'node'; // 'node' | 'edge'
+  let edgeFirstNode = null;
+  let lastPath = null; // {order:[ids], dist}
+
+  const canvas = document.getElementById('graphCanvas');
+  const ctx = canvas.getContext('2d');
+
+  function resizeCanvas(){
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width * devicePixelRatio;
+    canvas.height = rect.height * devicePixelRatio;
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
+    ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+    draw();
+  }
+  window.addEventListener('resize', resizeCanvas);
+
+  // ---------- Default seed campus map ----------
+  function seedDefaultMap(){
+    const w = canvas.clientWidth || 900;
+    const h = canvas.clientHeight || 600;
+    const layout = [
+      {name:'Main Gate',      x:0.08, y:0.50},
+      {name:'Library',        x:0.30, y:0.25},
+      {name:'Cafeteria',      x:0.30, y:0.72},
+      {name:'Engineering Blk',x:0.55, y:0.18},
+      {name:'Science Blk',    x:0.55, y:0.50},
+      {name:'Auditorium',     x:0.55, y:0.82},
+      {name:'Sports Complex', x:0.80, y:0.30},
+      {name:'Hostel Block',   x:0.80, y:0.70},
+      {name:'Admin Office',   x:0.30, y:0.50}
+    ];
+    nodes = layout.map(l => ({id:nextId++, name:l.name, x:l.x*w, y:l.y*h}));
+    const byName = n => nodes.find(x=>x.name===n);
+    const pairs = [
+      ['Main Gate','Admin Office',120],
+      ['Main Gate','Cafeteria',260],
+      ['Admin Office','Library',110],
+      ['Admin Office','Cafeteria',160],
+      ['Admin Office','Science Blk',180],
+      ['Library','Engineering Blk',150],
+      ['Library','Science Blk',140],
+      ['Cafeteria','Auditorium',150],
+      ['Cafeteria','Science Blk',170],
+      ['Science Blk','Engineering Blk',130],
+      ['Science Blk','Auditorium',160],
+      ['Science Blk','Sports Complex',190],
+      ['Engineering Blk','Sports Complex',140],
+      ['Auditorium','Hostel Block',150],
+      ['Sports Complex','Hostel Block',170]
+    ];
+    edges = pairs.map(([a,b,w]) => ({a:byName(a).id, b:byName(b).id, weight:w}));
+  }
+
+  // ---------- Helpers ----------
+  function nodeById(id){ return nodes.find(n=>n.id===id); }
+  function neighborsOf(id){
+    return edges.filter(e=>e.a===id||e.b===id)
+      .map(e=>({id: e.a===id?e.b:e.a, weight:e.weight}));
+  }
+  function edgeExists(a,b){
+    return edges.some(e => (e.a===a&&e.b===b) || (e.a===b&&e.b===a));
+  }
+
+  // ---------- Dijkstra ----------
+  function dijkstra(startId, endId){
+    const dist = {}, prev = {}, visited = {};
+    nodes.forEach(n => dist[n.id] = Infinity);
+    dist[startId] = 0;
+    const queue = new Set(nodes.map(n=>n.id));
+
+    while(queue.size){
+      // pick unvisited node with smallest dist
+      let u = null, best = Infinity;
+      queue.forEach(id => { if(dist[id] < best){ best = dist[id]; u = id; } });
+      if(u === null) break; // remaining nodes unreachable
+      queue.delete(u);
+      visited[u] = true;
+      if(u === endId) break;
+
+      neighborsOf(u).forEach(({id:v, weight}) => {
+        if(visited[v]) return;
+        const alt = dist[u] + weight;
+        if(alt < dist[v]){
+          dist[v] = alt;
+          prev[v] = u;
+        }
+      });
+    }
+
+    if(dist[endId] === Infinity) return null;
+    const order = [];
+    let cur = endId;
+    while(cur !== undefined){
+      order.unshift(cur);
+      cur = prev[cur];
+    }
+    return { order, dist: dist[endId] };
+  }
+
+  // ---------- Drawing ----------
+  function draw(){
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    ctx.clearRect(0,0,w,h);
+
+    const pathSet = new Set();
+    const pathEdgeSet = new Set();
+    if(lastPath){
+      lastPath.order.forEach(id=>pathSet.add(id));
+      for(let i=0;i<lastPath.order.length-1;i++){
+        pathEdgeSet.add(lastPath.order[i]+'-'+lastPath.order[i+1]);
+        pathEdgeSet.add(lastPath.order[i+1]+'-'+lastPath.order[i]);
+      }
+    }
+
+    // edges
+    edges.forEach(e=>{
+      const a = nodeById(e.a), b = nodeById(e.b);
+      if(!a||!b) return;
+      const onPath = pathEdgeSet.has(e.a+'-'+e.b);
+      ctx.beginPath();
+      ctx.moveTo(a.x,a.y);
+      ctx.lineTo(b.x,b.y);
+      ctx.strokeStyle = onPath ? '#e0a458' : '#3b4f68';
+      ctx.lineWidth = onPath ? 4 : 2;
+      ctx.stroke();
+
+      // weight label
+      const mx = (a.x+b.x)/2, my = (a.y+b.y)/2;
+      ctx.font = '600 12px Inter, sans-serif';
+      const label = String(e.weight);
+      const tw = ctx.measureText(label).width;
+      ctx.fillStyle = 'rgba(22,32,44,0.92)';
+      ctx.fillRect(mx-tw/2-4, my-9, tw+8, 16);
+      ctx.fillStyle = onPath ? '#e0a458' : '#9fb0c3';
+      ctx.textAlign='center';
+      ctx.textBaseline='middle';
+      ctx.fillText(label, mx, my-1);
+    });
+
+    // pending edge preview
+    if(mode==='edge' && edgeFirstNode){
+      const a = nodeById(edgeFirstNode);
+      if(a){
+        ctx.beginPath();
+        ctx.arc(a.x,a.y,17,0,Math.PI*2);
+        ctx.strokeStyle = '#e0a458';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4,4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+
+    // nodes
+    nodes.forEach(n=>{
+      const onPath = pathSet.has(n.id);
+      const isEndpoint = lastPath && (n.id===lastPath.order[0] || n.id===lastPath.order[lastPath.order.length-1]);
+      ctx.beginPath();
+      ctx.arc(n.x,n.y,13,0,Math.PI*2);
+      ctx.fillStyle = isEndpoint ? '#2f8f7f' : (onPath ? '#e0a458' : '#e8e2d2');
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#16202c';
+      ctx.stroke();
+
+      ctx.font = '600 13px Inter, sans-serif';
+      ctx.fillStyle = '#e8e2d2';
+      ctx.textAlign='center';
+      ctx.textBaseline='bottom';
+      ctx.fillText(n.name, n.x, n.y-17);
+    });
+  }
+
+  // ---------- UI wiring ----------
+  const nodeNameInput = document.getElementById('nodeNameInput');
+  const edgeWeightInput = document.getElementById('edgeWeightInput');
+  const edgeWeightRow = document.getElementById('edgeWeightRow');
+  const modeHint = document.getElementById('modeHint');
+  const modeNodeBtn = document.getElementById('modeNode');
+  const modeEdgeBtn = document.getElementById('modeEdge');
+  const stageStatus = document.getElementById('stageStatus');
+  const edgeListEl = document.getElementById('edgeList');
+  const startSelect = document.getElementById('startSelect');
+  const endSelect = document.getElementById('endSelect');
+  const routeResult = document.getElementById('routeResult');
+
+  function setMode(m){
+    mode = m;
+    edgeFirstNode = null;
+    modeNodeBtn.classList.toggle('active', m==='node');
+    modeEdgeBtn.classList.toggle('active', m==='edge');
+    edgeWeightRow.style.display = m==='edge' ? 'flex' : 'none';
+    modeHint.textContent = m==='node'
+      ? 'Click anywhere on the map to drop a new location pin, then name it below.'
+      : 'Click a first location, then a second, to connect them with a path of the given distance.';
+    draw();
+  }
+  modeNodeBtn.addEventListener('click', ()=>setMode('node'));
+  modeEdgeBtn.addEventListener('click', ()=>setMode('edge'));
+
+  function hitTest(x,y){
+    return nodes.find(n => Math.hypot(n.x-x, n.y-y) <= 14);
+  }
+
+  canvas.addEventListener('click', (e)=>{
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const hit = hitTest(x,y);
+
+    if(mode==='node'){
+      if(hit) return; // don't stack a node on an existing one
+      const name = nodeNameInput.value.trim() || ('Location ' + nextId);
+      nodes.push({id:nextId++, name, x, y});
+      nodeNameInput.value = '';
+      refreshAll();
+      return;
+    }
+
+    if(mode==='edge'){
+      if(!hit) return;
+      if(edgeFirstNode === null){
+        edgeFirstNode = hit.id;
+      } else if(edgeFirstNode === hit.id){
+        edgeFirstNode = null;
+      } else {
+        if(!edgeExists(edgeFirstNode, hit.id)){
+          const weight = Math.max(1, parseInt(edgeWeightInput.value,10) || 1);
+          edges.push({a:edgeFirstNode, b:hit.id, weight});
+        }
+        edgeFirstNode = null;
+      }
+      refreshAll();
+    }
+  });
+
+  document.getElementById('clearMapBtn').addEventListener('click', ()=>{
+    nodes = []; edges = []; nextId = 1; lastPath = null; edgeFirstNode = null;
+    seedDefaultMap();
+    refreshAll();
+  });
+
+  document.getElementById('findRouteBtn').addEventListener('click', ()=>{
+    const s = parseInt(startSelect.value,10);
+    const t = parseInt(endSelect.value,10);
+    if(!s || !t){
+      routeResult.innerHTML = '<div class="route-empty">Add at least two locations first.</div>';
+      return;
+    }
+    if(s === t){
+      routeResult.innerHTML = '<div class="route-empty">Start and destination are the same location.</div>';
+      lastPath = null; draw();
+      return;
+    }
+    const result = dijkstra(s,t);
+    if(!result){
+      routeResult.innerHTML = '<div class="route-empty">No path exists between these locations yet.</div>';
+      lastPath = null; draw();
+      return;
+    }
+    lastPath = result;
+    const names = result.order.map(id=>nodeById(id).name);
+    routeResult.innerHTML =
+      '<div>Shortest distance</div>' +
+      '<div class="dist">' + result.dist + ' m</div>' +
+      '<div class="route-path">' +
+        names.map((n,i)=>'<span class="stop">'+n+'</span>' + (i<names.length-1?'<span class="arrow">&#8594;</span>':'')).join('') +
+      '</div>';
+    draw();
+  });
+
+  function refreshAll(){
+    // selects
+    const prevStart = startSelect.value, prevEnd = endSelect.value;
+    startSelect.innerHTML = nodes.map(n=>`<option value="${n.id}">${n.name}</option>`).join('');
+    endSelect.innerHTML = nodes.map(n=>`<option value="${n.id}">${n.name}</option>`).join('');
+    if(nodes.some(n=>String(n.id)===prevStart)) startSelect.value = prevStart;
+    if(nodes.some(n=>String(n.id)===prevEnd)) endSelect.value = prevEnd;
+    if(!startSelect.value && nodes[0]) startSelect.value = nodes[0].id;
+    if(!endSelect.value && nodes[nodes.length-1]) endSelect.value = nodes[nodes.length-1].id;
+
+    // edge list
+    edgeListEl.innerHTML = edges.map((e,i)=>{
+      const a = nodeById(e.a), b = nodeById(e.b);
+      if(!a||!b) return '';
+      return `<li><span>${a.name} &#8596; ${b.name}<span class="wt">${e.weight} m</span></span>
+        <button class="btn-ghost-danger" data-idx="${i}">Remove</button></li>`;
+    }).join('') || '<li class="route-empty" style="border:none;background:transparent;padding:0;">No paths yet.</li>';
+
+    edgeListEl.querySelectorAll('button[data-idx]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        edges.splice(parseInt(btn.dataset.idx,10),1);
+        lastPath = null;
+        refreshAll();
+      });
+    });
+
+    stageStatus.textContent = `${nodes.length} location${nodes.length!==1?'s':''} · ${edges.length} path${edges.length!==1?'s':''}`;
+    draw();
+  }
+
+  // ---------- Init ----------
+  resizeCanvas();
+  seedDefaultMap();
+  refreshAll();
+})();
+</script>
+</body>
+</html>
